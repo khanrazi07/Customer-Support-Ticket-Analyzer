@@ -23,8 +23,8 @@ def health_check():
 def predict(issue: str):
     try:
         #getting input in the form of vectors
-        issue_vec= issue_vectorizer([issue])
-        urgency_vec = urgency_vectorizer([issue])
+        issue_vec= issue_vectorizer.transform([issue])
+        urgency_vec = urgency_vectorizer.transform([issue])
 
 
         #prediction
