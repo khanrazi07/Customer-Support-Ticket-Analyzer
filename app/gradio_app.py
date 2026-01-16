@@ -1,5 +1,6 @@
 import sys
 import os
+from src.entity_extraction import extract_entities
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 

@@ -1,53 +1,68 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from src.preprocessing import preprocess_text
+from src.entity_extraction import extract_entities
+from src.feature_engineering import (
+    add_text_length,
+    add_sentiment_score,
+    combine_features
+)
 import joblib
+import numpy as np
 import os
+import sys
+import pandas as pd
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, PROJECT_ROOT)
+
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+
+df_products = pd.read_csv(os.path.join(DATA_DIR, "AI_tickets.csv"))
+product_list = df_products["product"].dropna().unique().tolist()
 
 app = FastAPI(title="Customer Support Ticket Analyzer API")
 
-ISSUE_MODEL_PATH = os.path.join("models", "issue_model.pkl")
-URGENCY_MODEL_PATH = os.path.join("models", "urgency_model.pkl")
-ISSUE_VECTOR_PATH = os.path.join("models", "issue_vectorizer.pkl")
-URGENCY_VECTOR_PATH = os.path.join("models", "urgency_vectorizer.pkl")
+issue_model = joblib.load(os.path.join(MODELS_DIR, "issue_model.pkl"))
+urgency_model = joblib.load(os.path.join(MODELS_DIR, "urgency_model.pkl"))
+issue_vectorizer = joblib.load(os.path.join(MODELS_DIR, "issue_vectorizer.pkl"))
+urgency_vectorizer = joblib.load(os.path.join(MODELS_DIR, "urgency_vectorizer.pkl"))
 
-# Load models and vectorizers
-issue_model = joblib.load(ISSUE_MODEL_PATH)
-urgency_model = joblib.load(URGENCY_MODEL_PATH)
-issue_vectorizer = joblib.load(ISSUE_VECTOR_PATH)
-urgency_vectorizer = joblib.load(URGENCY_VECTOR_PATH)
+class TicketRequest(BaseModel):
+    ticket_text: str
 
 @app.get("/")
 def health_check():
     return {"status": "API is running"}
 
-from sklearn.pipeline import Pipeline
-
 @app.post("/api/predict")
-def predict(issue: str):
-    try:
-        issue_text = str(issue)
+def analyze_ticket(request: TicketRequest):
+    ticket_text = request.ticket_text
 
-        # ----- Issue Type -----
-        if isinstance(issue_model, Pipeline):
-            issue_type = issue_model.predict([issue_text])[0]
-        else:
-            issue_vec = issue_vectorizer.transform([issue_text])
-            issue_type = issue_model.predict(issue_vec)[0]
+    if not ticket_text.strip():
+        raise HTTPException(status_code=400, detail="Ticket text cannot be empty")
 
-        # ----- Urgency -----
-        if isinstance(urgency_model, Pipeline):
-            urgency = urgency_model.predict([issue_text])[0]
-        else:
-            urgency_vec = urgency_vectorizer.transform([issue_text])
-            urgency = urgency_model.predict(urgency_vec)[0]
+    processed = preprocess_text(ticket_text)
 
-        return {
-            "issue": issue_text,
-            "issue_type": issue_type,
-            "urgency": urgency
-        }
+    # Issue prediction
+    X_issue_tfidf = issue_vectorizer.transform([processed])
+    len_issue = np.array([len(processed.split())])
+    sent_issue = np.array([add_sentiment_score(pd.Series([processed]))[0]])
+    X_issue = combine_features(X_issue_tfidf, len_issue, sent_issue)
+    issue_pred = issue_model.predict(X_issue)[0]
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Prediction failed: {str(e)}"
-        )
+    # Urgency prediction
+    X_urg_tfidf = urgency_vectorizer.transform([processed])
+    len_urg = np.array([len(processed.split())])
+    sent_urg = np.array([add_sentiment_score(pd.Series([processed]))[0]])
+    X_urg = combine_features(X_urg_tfidf, len_urg, sent_urg)
+    urgency_pred = urgency_model.predict(X_urg)[0]
+
+    entities = extract_entities(ticket_text, product_list)
+
+    return {
+        "issue_type": issue_pred,
+        "urgency": urgency_pred,
+        "entities": entities
+    }
