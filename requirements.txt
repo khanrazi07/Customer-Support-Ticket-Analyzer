@@ -9,3 +9,8 @@ seaborn
 joblib
 gradio
 openpyxl
+fastapi
+uvicorn
+scikit-learn
+pandas
+numpy
