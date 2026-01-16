@@ -19,18 +19,26 @@ urgency_vectorizer = joblib.load(URGENCY_VECTOR_PATH)
 def health_check():
     return {"status": "API is running"}
 
+from sklearn.pipeline import Pipeline
+
 @app.post("/api/predict")
 def predict(issue: str):
     try:
         issue_text = str(issue)
 
-        # Vectorize input
-        issue_vec = issue_vectorizer.transform([issue_text])
-        urgency_vec = urgency_vectorizer.transform([issue_text])
+        # ----- Issue Type -----
+        if isinstance(issue_model, Pipeline):
+            issue_type = issue_model.predict([issue_text])[0]
+        else:
+            issue_vec = issue_vectorizer.transform([issue_text])
+            issue_type = issue_model.predict(issue_vec)[0]
 
-        # Predict using VECTORS (THIS WAS THE FIX)
-        issue_type = issue_model.predict(issue_vec)[0]
-        urgency = urgency_model.predict(urgency_vec)[0]
+        # ----- Urgency -----
+        if isinstance(urgency_model, Pipeline):
+            urgency = urgency_model.predict([issue_text])[0]
+        else:
+            urgency_vec = urgency_vectorizer.transform([issue_text])
+            urgency = urgency_model.predict(urgency_vec)[0]
 
         return {
             "issue": issue_text,
