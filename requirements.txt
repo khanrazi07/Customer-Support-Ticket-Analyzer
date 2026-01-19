@@ -2,6 +2,7 @@ matplotlib
 seaborn
 fastapi
 uvicorn
+<<<<<<< HEAD
 pandas
 numpy
 scikit-learn==1.7.2
@@ -13,3 +14,6 @@ gradio
 openpyxl
 # spaCy English language model (REQUIRED for deployment)
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+=======
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl 
+>>>>>>> a7fc63bce261817be37432182373de79b5a2cfcd
