@@ -1,16 +1,15 @@
-pandas
-numpy
-scikit-learn
-nltk
-spacy
-textblob
 matplotlib
 seaborn
-joblib
-gradio
-openpyxl
 fastapi
 uvicorn
-scikit-learn
 pandas
 numpy
+scikit-learn==1.7.2
+joblib
+nltk
+spacy==3.7.2
+textblob
+gradio
+openpyxl
+# spaCy English language model (REQUIRED for deployment)
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl

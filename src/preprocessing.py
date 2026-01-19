@@ -2,16 +2,26 @@ import re
 import pandas as pd
 import nltk
 import spacy
-
 from nltk.corpus import stopwords
 
-# Download only once (safe to keep)
-nltk.download("stopwords")
+# ---------------- SAFE NLTK SETUP ----------------
+try:
+    STOP_WORDS = set(stopwords.words("english"))
+except LookupError:
+    nltk.download("stopwords")
+    STOP_WORDS = set(stopwords.words("english"))
 
-# Load spaCy model
-nlp = spacy.load("en_core_web_sm")
+# ---------------- LAZY spaCy LOAD ----------------
+_nlp = None
 
-STOP_WORDS = set(stopwords.words("english"))
+def get_nlp():
+    """
+    Load spaCy model lazily to avoid crashing at app startup (Render-safe).
+    """
+    global _nlp
+    if _nlp is None:
+        _nlp = spacy.load("en_core_web_sm")
+    return _nlp
 
 
 def clean_text(text: str) -> str:
@@ -39,6 +49,7 @@ def preprocess_text(text: str) -> str:
 
     text = clean_text(text)
 
+    nlp = get_nlp()
     doc = nlp(text)
 
     tokens = [
@@ -53,12 +64,7 @@ def preprocess_text(text: str) -> str:
 def preprocess_dataframe(df: pd.DataFrame, text_column: str) -> pd.DataFrame:
     df = df.copy()
 
-    # Handle missing ticket text
     df[text_column] = df[text_column].fillna("")
-
-    # Apply text preprocessing
     df["processed_text"] = df[text_column].apply(preprocess_text)
 
     return df
-
-
